@@ -152,7 +152,7 @@
 </head>
 <body>
   <div id="app">
-    <h1>Открытка насте высылатель</h1>
+    <h1>Открытка в россию без почта россии</h1>
     
     <canvas id="canvas" class="canvas"></canvas>
     
@@ -301,22 +301,88 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     });
 
-    document.getElementById('send-btn').addEventListener('click', () => {
-      canvas.toBlob((blob) => {
-        if (window.Telegram?.WebApp) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            window.Telegram.WebApp.sendData(JSON.stringify({
-              image: reader.result,
-              userId: window.Telegram.WebApp.initDataUnsafe.user?.id
-            }));
-          };
-          reader.readAsDataURL(blob);
-        } else {
-          alert('Функция отправки доступна только в Telegram');
-        }
-      }, 'image/png');
+     document.getElementById('send-btn').addEventListener('click', async () => {
+      try {
+        // Показываем индикатор загрузки
+        const sendBtn = document.getElementById('send-btn');
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Отправка...';
+        
+        // Конвертируем canvas в blob
+        canvas.toBlob(async (blob) => {
+          try {
+            if (window.Telegram?.WebApp) {
+              // Для Telegram WebApp
+              const reader = new FileReader();
+              reader.onload = () => {
+                const imageData = reader.result;
+                
+                // Добавляем больше информации для отправки
+                const dataToSend = {
+                  image: imageData,
+                  userId: window.Telegram.WebApp.initDataUnsafe.user?.id,
+                  username: window.Telegram.WebApp.initDataUnsafe.user?.username,
+                  date: new Date().toISOString()
+                };
+                
+                console.log('Отправляемые данные:', dataToSend);
+                window.Telegram.WebApp.sendData(JSON.stringify(dataToSend));
+                
+                // Закрываем веб-приложение после отправки
+                setTimeout(() => {
+                  window.Telegram.WebApp.close();
+                }, 1000);
+              };
+              reader.onerror = (error) => {
+                console.error('Ошибка чтения файла:', error);
+                alert('Ошибка при подготовке изображения');
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Отправить';
+              };
+              reader.readAsDataURL(blob);
+            } else {
+              // Для отладки в браузере
+              console.log('Режим отладки: данные не отправлены в Telegram');
+              
+              // Создаем временную ссылку для скачивания
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'graffiti.png';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              
+              alert('В режиме браузера изображение сохранено на устройство. В Telegram оно будет отправлено администратору.');
+            }
+          } catch (error) {
+            console.error('Ошибка при отправке:', error);
+            alert('Ошибка при отправке: ' + error.message);
+          } finally {
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Отправить';
+          }
+        }, 'image/png', 0.9); // 90% качество
+      } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка: ' + error.message);
+        document.getElementById('send-btn').disabled = false;
+        document.getElementById('send-btn').textContent = 'Отправить';
+      }
     });
+
+    // Добавляем обработчик события, когда Telegram обрабатывает данные
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.onEvent('webAppDataSendCompleted', function(event) {
+        console.log('Данные успешно отправлены:', event);
+      });
+      
+      window.Telegram.WebApp.onEvent('webAppDataSendFailed', function(event) {
+        console.error('Ошибка отправки данных:', event);
+        alert('Не удалось отправить данные. Попробуйте ещё раз.');
+      });
+    }
   </script>
 </body>
 </html>
