@@ -119,6 +119,26 @@ export default function App() {
     }, 'image/png', 0.9);
   };
 
+  
+  const sendToTelegram = () => {
+  const canvas = canvasRef.current;
+  if (!canvas) return;
+
+  canvas.toBlob((blob) => {
+    if (window.Telegram?.WebApp) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        // Отправляем данные боту
+        window.Telegram.WebApp.sendData(JSON.stringify({
+          image: reader.result,
+          userId: window.Telegram.WebApp.initDataUnsafe.user?.id
+        }));
+      };
+      reader.readAsDataURL(blob);
+    }
+  }, 'image/png');
+};
+
   return (
     <div className="app">
       <h1>Открытка насте высылатель</h1>
