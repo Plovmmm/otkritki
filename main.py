@@ -24,12 +24,12 @@ ADMIN_CHAT_ID = 1323961884  # Ваш chat_id
 async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         user = update.effective_user
-        logger.info(f"Получены данные от: {user.id} ({user.username or 'без username'})")
+        logger.info(f"Получены данные от: {user.id if user else 'anonymous'}")
         
         # Парсим данные из WebApp
         data = json.loads(update.message.web_app_data.data)
         image_base64 = data.get('image')
-        sender_id = data.get('userId', str(user.id))
+        sender_id = data.get('userId', 'anonymous')
         
         if not image_base64:
             await update.message.reply_text("❌ Не получены данные изображения")
@@ -39,9 +39,9 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
             # Декодируем изображение
             image_bytes = base64.b64decode(image_base64)
             img_file = BytesIO(image_bytes)
-            img_file.name = f"graffiti_{sender_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            img_file.name = f"graffiti_{sender_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
             
-            # Сохраняем временную копию для дебага
+            # Для дебага сохраняем файл
             if os.getenv('DEBUG_MODE'):
                 with open(img_file.name, 'wb') as f:
                     f.write(image_bytes)
@@ -50,16 +50,15 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
             await update.message.reply_text("❌ Ошибка обработки изображения")
             return
             
-        # Отправляем изображение
+        # Отправляем администратору
         try:
             caption = (
-                f"🖌 Новое граффити\n"
+                f"🖌 Новое граффити (JPEG)\n"
                 f"👤 От: {user.mention_markdown() if user else sender_id}\n"
                 f"📅 {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
                 f"#граффити"
             )
             
-            # Отправка администратору (даже если это отправитель)
             await context.bot.send_photo(
                 chat_id=ADMIN_CHAT_ID,
                 photo=img_file,
@@ -67,18 +66,13 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
                 parse_mode='Markdown'
             )
             
-            # Если отправитель не администратор - отправляем ему подтверждение
-            if str(user.id) != str(ADMIN_CHAT_ID):
-                await update.message.reply_text(
-                    "✅ Ваше граффити успешно отправлено администратору!",
-                    parse_mode='Markdown'
-                )
-            else:
-                await update.message.reply_text(
-                    "✅ Вы отправили граффити себе (как администратору)",
-                    parse_mode='Markdown'
-                )
-                
+            # Отправляем подтверждение пользователю
+            reply_text = ("✅ Ваше граффити отправлено администратору!" 
+                         if str(user.id) != str(ADMIN_CHAT_ID) else
+                         "✅ Вы отправили граффити себе (как администратору)")
+            
+            await update.message.reply_text(reply_text)
+            
             logger.info(f"Изображение отправлено в чат {ADMIN_CHAT_ID}")
             
         except Exception as e:
