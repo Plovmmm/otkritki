@@ -1,7 +1,0 @@
-{
-  "homepage": "https://plovmmm.github.io/otkritki/index.html",
-  "scripts": {
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
-  }
-}
