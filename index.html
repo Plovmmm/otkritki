@@ -1,55 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#000000">
-  <title>Telegram Graffiti App</title>
+  <title>Граффити редактор</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body, html {
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      overscroll-behavior: none;
-      touch-action: none;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: #f5f5f5;
-      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     
-    #app {
-      max-width: 100vw;
-      min-height: 100vh;
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f5f5;
       padding: 20px;
-      box-sizing: border-box;
+      overscroll-behavior: none;
+    }
+    
+    .app {
+      max-width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
+      gap: 15px;
     }
     
     h1 {
-      color: #333;
-      margin-bottom: 20px;
-      text-align: center;
       font-size: 1.5rem;
+      color: #333;
+      text-align: center;
     }
     
-    .canvas {
+    .canvas-container {
+      width: 100%;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    #canvas {
+      display: block;
       width: 100%;
       height: 60vh;
-      max-height: 500px;
-      background-color: white;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      touch-action: none;
-      display: block;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      background: white;
     }
     
     .controls {
       width: 100%;
-      max-width: 500px;
-      margin-top: 20px;
       display: flex;
       flex-direction: column;
       gap: 15px;
@@ -59,220 +60,194 @@
       display: flex;
       justify-content: center;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
     }
     
     .color-btn {
-      width: 30px;
-      height: 30px;
+      width: 35px;
+      height: 35px;
       border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
       cursor: pointer;
-      transition: all 0.2s ease;
-      border: none;
     }
     
     .color-btn.active {
-      transform: scale(1.2);
-      box-shadow: 0 0 0 2px #007bff;
+      transform: scale(1.1);
+      box-shadow: 0 0 0 3px #007bff;
     }
     
-    .size-picker, .actions {
+    .size-picker {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    .size-btn {
+      padding: 8px 15px;
+      border-radius: 20px;
+      border: none;
+      background: #f0f0f0;
+      font-weight: bold;
+    }
+    
+    .size-btn.active {
+      background: #007bff;
+      color: white;
+    }
+    
+    .actions {
       display: flex;
       justify-content: center;
       gap: 10px;
       flex-wrap: wrap;
     }
     
-    button {
-      padding: 8px 16px;
+    .action-btn {
+      padding: 10px 20px;
+      border-radius: 20px;
       border: none;
-      border-radius: 4px;
+      font-weight: bold;
       cursor: pointer;
-      font-size: 14px;
-      transition: all 0.2s ease;
-      min-width: 80px;
-    }
-    
-    #send-btn {
-      background-color: #007bff;
-      color: white;
-    }
-    
-    #send-btn:hover {
-      background-color: #0056b3;
-    }
-    
-    #download-btn {
-      background-color: #28a745;
-      color: white;
-    }
-    
-    #download-btn:hover {
-      background-color: #218838;
+      min-width: 120px;
     }
     
     #clear-btn {
-      background-color: #dc3545;
+      background: #ff3b30;
       color: white;
     }
     
-    #clear-btn:hover {
-      background-color: #c82333;
-    }
-    
-    .size-picker button {
-      background-color: #f0f0f0;
-      color: #333;
-    }
-    
-    .size-picker button.active {
-      background-color: #007bff;
+    #download-btn {
+      background: #34c759;
       color: white;
     }
     
-    .loader {
+    #send-btn {
+      background: #007bff;
+      color: white;
+    }
+    
+    .toast {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 0%;
-      height: 3px;
-      background-color: #007bff;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 20px;
       z-index: 1000;
-      transition: width 0.3s;
+      opacity: 0;
+      transition: opacity 0.3s;
     }
     
-    @media (max-width: 480px) {
-      #app {
-        padding: 10px;
-      }
-      
-      h1 {
-        font-size: 1.3rem;
-        margin-bottom: 15px;
-      }
-      
-      .canvas {
-        height: 50vh;
-      }
-      
-      button {
-        padding: 6px 12px;
-        font-size: 13px;
+    @media (max-width: 500px) {
+      .action-btn {
+        min-width: 100px;
+        padding: 8px 15px;
       }
     }
   </style>
 </head>
 <body>
-  <div id="app">
+  <div class="app">
     <h1>Граффити редактор</h1>
     
-    <canvas id="canvas" class="canvas"></canvas>
+    <div class="canvas-container">
+      <canvas id="canvas"></canvas>
+    </div>
     
     <div class="controls">
       <div class="color-picker">
-        <button class="color-btn active" style="background-color: #000000" data-color="#000000"></button>
-        <button class="color-btn" style="background-color: #ff0000" data-color="#ff0000"></button>
-        <button class="color-btn" style="background-color: #00ff00" data-color="#00ff00"></button>
-        <button class="color-btn" style="background-color: #0000ff" data-color="#0000ff"></button>
-        <button class="color-btn" style="background-color: #ffff00" data-color="#ffff00"></button>
-        <button class="color-btn" style="background-color: #ffffff" data-color="#ffffff"></button>
+        <button class="color-btn active" style="background:#000" data-color="#000000"></button>
+        <button class="color-btn" style="background:#ff0000" data-color="#ff0000"></button>
+        <button class="color-btn" style="background:#00ff00" data-color="#00ff00"></button>
+        <button class="color-btn" style="background:#0000ff" data-color="#0000ff"></button>
+        <button class="color-btn" style="background:#ffff00" data-color="#ffff00"></button>
+        <button class="color-btn" style="background:#ffffff" data-color="#ffffff"></button>
       </div>
       
       <div class="size-picker">
-        <button class="active" data-size="5">5px</button>
-        <button data-size="10">10px</button>
-        <button data-size="30">30px</button>
+        <button class="size-btn active" data-size="5">Тонкий</button>
+        <button class="size-btn" data-size="10">Средний</button>
+        <button class="size-btn" data-size="20">Толстый</button>
       </div>
       
       <div class="actions">
-        <button id="clear-btn">Очистить</button>
-        <button id="download-btn">Скачать JPEG</button>
-        <button id="send-btn">Отправить</button>
+        <button class="action-btn" id="clear-btn">Очистить</button>
+        <button class="action-btn" id="download-btn">Скачать</button>
+        <button class="action-btn" id="send-btn">Отправить</button>
       </div>
     </div>
   </div>
 
-  <div class="loader" id="loader"></div>
+  <div class="toast" id="toast"></div>
 
   <script>
-    // Инициализация canvas
+    // Инициализация элементов
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    const toast = document.getElementById('toast');
     let isDrawing = false;
     let currentColor = '#000000';
     let currentSize = 5;
     const ADMIN_CHAT_ID = 1323961884; // Ваш ID
 
-    // Инициализация Telegram WebApp
-    if (window.Telegram?.WebApp) {
-      Telegram.WebApp.ready();
-      Telegram.WebApp.expand();
+    // Показ уведомления
+    function showToast(message, duration = 2000) {
+      toast.textContent = message;
+      toast.style.opacity = 1;
+      setTimeout(() => toast.style.opacity = 0, duration);
     }
 
-    // Настройка canvas
+    // Инициализация Canvas
     function initCanvas() {
-      const devicePixelRatio = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
       
-      canvas.width = rect.width * devicePixelRatio;
-      canvas.height = rect.height * devicePixelRatio;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
+      canvas.width = rect.width * ratio;
+      canvas.height = rect.height * ratio;
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
       
-      ctx.scale(devicePixelRatio, devicePixelRatio);
+      ctx.scale(ratio, ratio);
       ctx.strokeStyle = currentColor;
       ctx.lineWidth = currentSize;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     // Обработчики рисования
     function startDrawing(e) {
       isDrawing = true;
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX || e.touches[0].clientX) - rect.left;
-      const y = (e.clientY || e.touches[0].clientY) - rect.top;
-      
+      const pos = getPosition(e);
       ctx.beginPath();
-      ctx.moveTo(x, y);
+      ctx.moveTo(pos.x, pos.y);
     }
 
     function draw(e) {
       if (!isDrawing) return;
-      
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX || e.touches[0].clientX) - rect.left;
-      const y = (e.clientY || e.touches[0].clientY) - rect.top;
-      
-      ctx.lineTo(x, y);
+      const pos = getPosition(e);
+      ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
     }
 
     function stopDrawing() {
       isDrawing = false;
-      ctx.closePath();
     }
 
-    // Инициализация
-    initCanvas();
-    window.addEventListener('resize', initCanvas);
+    function getPosition(e) {
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches ? e.touches[0] : e;
+      return {
+        x: (touch.clientX - rect.left) * (canvas.width / rect.width),
+        y: (touch.clientY - rect.top) * (canvas.height / rect.height)
+      };
+    }
 
-    // Назначение событий
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseleave', stopDrawing);
-    canvas.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      startDrawing(e.touches[0]);
-    });
-    canvas.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      draw(e.touches[0]);
-    });
-    canvas.addEventListener('touchend', stopDrawing);
-
-    // Обработчики кнопок
+    // Кнопки инструментов
     document.querySelectorAll('.color-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
@@ -282,71 +257,26 @@
       });
     });
 
-    document.querySelectorAll('.size-picker button').forEach(btn => {
+    document.querySelectorAll('.size-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.size-picker button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentSize = parseInt(btn.dataset.size);
         ctx.lineWidth = currentSize;
       });
     });
 
+    // Очистка холста
     document.getElementById('clear-btn').addEventListener('click', () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      showToast('Холст очищен');
     });
 
-    // Функция скачивания JPEG
-    document.getElementById('download-btn').addEventListener('click', function() {
-      const downloadBtn = this;
-      const loader = document.getElementById('loader');
-      
-      downloadBtn.disabled = true;
-      downloadBtn.textContent = 'Подготовка...';
-      loader.style.width = '100%';
-      
-      // Создаем canvas с белым фоном
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = canvas.width;
-      tempCanvas.height = canvas.height;
-      const tempCtx = tempCanvas.getContext('2d');
-      
-      // Заливаем белым фоном
-      tempCtx.fillStyle = 'white';
-      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-      
-      // Копируем рисунок
-      tempCtx.drawImage(canvas, 0, 0);
-      
-      // Конвертируем в JPEG
-      tempCanvas.toBlob(function(blob) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `граффити_${new Date().toISOString().slice(0, 10)}.jpg`;
-        document.body.appendChild(a);
-        a.click();
-        
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          downloadBtn.disabled = false;
-          downloadBtn.textContent = 'Скачать JPEG';
-          loader.style.width = '0';
-        }, 100);
-      }, 'image/jpeg', 0.9);
-    });
-
-    // Функция отправки администратору
-    document.getElementById('send-btn').addEventListener('click', async function() {
-      const sendBtn = this;
-      const loader = document.getElementById('loader');
-      
-      sendBtn.disabled = true;
-      sendBtn.textContent = 'Отправка...';
-      loader.style.width = '100%';
-      
+    // Скачивание (работает на iOS/Android)
+    document.getElementById('download-btn').addEventListener('click', async () => {
       try {
-        // Создаем JPEG для отправки
+        // Создаем canvas с белым фоном
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = canvas.width;
         tempCanvas.height = canvas.height;
@@ -356,70 +286,128 @@
         tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
         tempCtx.drawImage(canvas, 0, 0);
         
-        // Конвертируем в Blob
-        tempCanvas.toBlob(async function(blob) {
-          try {
+        // Конвертируем в JPEG
+        tempCanvas.toBlob(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `граффити_${new Date().toLocaleDateString()}.jpg`;
+          
+          // Для iOS используем специальный подход
+          if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
             const reader = new FileReader();
-            reader.onload = function() {
-              const imageBase64 = reader.result.split(',')[1];
-              const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'unknown';
-              
-              // Формируем данные для отправки
-              const dataToSend = {
-                image: imageBase64,
-                userId: userId,
-                format: 'jpeg',
-                timestamp: new Date().toISOString()
-              };
-              
-              if (window.Telegram?.WebApp) {
-                // Отправка через Telegram WebApp
-                Telegram.WebApp.sendData(JSON.stringify(dataToSend));
-                
-                // Обработчики событий Telegram
-                Telegram.WebApp.onEvent('webAppDataSendCompleted', function() {
-                  console.log('Данные отправлены успешно');
-                  sendBtn.textContent = 'Отправлено!';
-                  setTimeout(() => {
-                    sendBtn.disabled = false;
-                    sendBtn.textContent = 'Отправить';
-                    loader.style.width = '0';
-                  }, 2000);
-                });
-                
-                Telegram.WebApp.onEvent('webAppDataSendFailed', function() {
-                  console.error('Ошибка отправки');
-                  sendBtn.disabled = false;
-                  sendBtn.textContent = 'Ошибка, повторить';
-                  loader.style.width = '0';
-                });
-              } else {
-                // Режим отладки в браузере
-                console.log('Данные для отправки:', dataToSend);
-                alert('В режиме браузера отправка имитируется. В Telegram данные будут отправлены администратору.');
-                sendBtn.disabled = false;
-                sendBtn.textContent = 'Отправить';
-                loader.style.width = '0';
-              }
-            };
-            reader.onerror = function() {
-              throw new Error('Ошибка чтения файла');
+            reader.onload = () => {
+              const newTab = window.open();
+              newTab.document.write(
+                `<img src="${reader.result}" style="max-width:100%"/>`
+              );
             };
             reader.readAsDataURL(blob);
-          } catch (error) {
-            console.error('Ошибка:', error);
-            sendBtn.disabled = false;
-            sendBtn.textContent = 'Ошибка, повторить';
-            loader.style.width = '0';
+            showToast('Откройте изображение и сохраните');
+          } else {
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }, 100);
+            showToast('Изображение сохранено');
           }
         }, 'image/jpeg', 0.9);
       } catch (error) {
-        console.error('Ошибка:', error);
-        sendBtn.disabled = false;
-        sendBtn.textContent = 'Ошибка, повторить';
-        loader.style.width = '0';
+        console.error('Ошибка скачивания:', error);
+        showToast('Ошибка при сохранении', 3000);
       }
     });
+
+    // Отправка администратору
+    document.getElementById('send-btn').addEventListener('click', async () => {
+      const sendBtn = document.getElementById('send-btn');
+      sendBtn.disabled = true;
+      
+      try {
+        // Создаем JPEG изображение
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        tempCtx.fillStyle = 'white';
+        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+        tempCtx.drawImage(canvas, 0, 0);
+        
+        // Конвертируем в base64
+        const imageBase64 = await new Promise(resolve => {
+          tempCanvas.toBlob(blob => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.readAsDataURL(blob);
+          }, 'image/jpeg', 0.9);
+        });
+        
+        // Формируем данные для отправки
+        const user = window.Telegram?.WebApp?.initDataUnsafe?.user;
+        const dataToSend = {
+          image: imageBase64,
+          userId: user?.id || 'unknown',
+          username: user?.username || 'unknown',
+          isAdmin: user?.id === ADMIN_CHAT_ID,
+          timestamp: new Date().toISOString()
+        };
+        
+        // Отправка через Telegram WebApp
+        if (window.Telegram?.WebApp) {
+          Telegram.WebApp.sendData(JSON.stringify(dataToSend));
+          
+          // Обработчики событий
+          Telegram.WebApp.onEvent('webAppDataSendCompleted', () => {
+            showToast('Успешно отправлено!');
+            sendBtn.disabled = false;
+          });
+          
+          Telegram.WebApp.onEvent('webAppDataSendFailed', () => {
+            showToast('Ошибка отправки', 3000);
+            sendBtn.disabled = false;
+          });
+        } else {
+          // Режим отладки
+          console.log('Данные для отправки:', dataToSend);
+          showToast('В Telegram будет отправлено админу');
+          sendBtn.disabled = false;
+        }
+      } catch (error) {
+        console.error('Ошибка отправки:', error);
+        showToast('Ошибка при отправке', 3000);
+        sendBtn.disabled = false;
+      }
+    });
+
+    // Инициализация приложения
+    initCanvas();
+    window.addEventListener('resize', initCanvas);
+    
+    // Обработчики событий canvas
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      startDrawing(e);
+    });
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      draw(e);
+    });
+    canvas.addEventListener('touchend', stopDrawing);
+
+    // Инициализация Telegram WebApp
+    if (window.Telegram?.WebApp) {
+      Telegram.WebApp.ready();
+      Telegram.WebApp.expand();
+      Telegram.WebApp.setHeaderColor('#ffffff');
+      Telegram.WebApp.setBackgroundColor('#ffffff');
+    }
   </script>
 </body>
 </html>
