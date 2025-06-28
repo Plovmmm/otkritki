@@ -93,96 +93,98 @@ document.getElementById('clear-btn').addEventListener('click', () => {
   showToast('Холст очищен');
 });
 
-// Скачивание изображения
+// Функция скачивания (теперь работает на iOS с сохранением в фотопленку)
 document.getElementById('download-btn').addEventListener('click', async () => {
-  try {
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width;
-    tempCanvas.height = canvas.height;
-    const tempCtx = tempCanvas.getContext('2d');
-    
-    tempCtx.fillStyle = 'white';
-    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-    tempCtx.drawImage(canvas, 0, 0);
-    
-    tempCanvas.toBlob(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `граффити_${new Date().toLocaleDateString()}.jpg`;
+    try {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext('2d');
       
-      if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const newTab = window.open();
-          newTab.document.write(`<img src="${reader.result}" style="max-width:100%"/>`);
-        };
-        reader.readAsDataURL(blob);
-        showToast('Откройте изображение и сохраните');
-      } else {
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 100);
+      tempCtx.fillStyle = 'white';
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.drawImage(canvas, 0, 0);
+      
+      // Конвертируем в Blob
+      tempCanvas.toBlob(async (blob) => {
+        if ('share' in navigator && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          // Для iOS используем Web Share API
+          const file = new File([blob], "граффити.jpg", { type: "image/jpeg" });
+          await navigator.share({
+            files: [file],
+            title: "Мое граффити"
+          });
+        } else {
+          // Стандартное скачивание для других устройств
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `граффити_${new Date().toLocaleDateString()}.jpg`;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 100);
+        }
         showToast('Изображение сохранено');
-      }
-    }, 'image/jpeg', 0.9);
-  } catch (error) {
-    console.error('Ошибка скачивания:', error);
-    showToast('Ошибка при сохранении', 3000);
-  }
-});
-
-// Отправка боту
-document.getElementById('send-btn').addEventListener('click', async () => {
-  const sendBtn = document.getElementById('send-btn');
-  sendBtn.disabled = true;
-  sendBtn.textContent = 'Отправка...';
-  
-  try {
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width;
-    tempCanvas.height = canvas.height;
-    const tempCtx = tempCanvas.getContext('2d');
-    
-    tempCtx.fillStyle = 'white';
-    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-    tempCtx.drawImage(canvas, 0, 0);
-    
-    const imageBase64 = await new Promise(resolve => {
-      tempCanvas.toBlob(blob => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.readAsDataURL(blob);
       }, 'image/jpeg', 0.9);
-    });
-    
-    const dataToSend = {
-      image: imageBase64,
-      format: 'jpeg',
-      timestamp: new Date().toISOString()
-    };
-    
-    if (window.Telegram?.WebApp) {
-      Telegram.WebApp.sendData(JSON.stringify(dataToSend));
-      Telegram.WebApp.onEvent('webAppDataSendCompleted', () => {
-        showToast('Отправлено!');
-        setTimeout(() => Telegram.WebApp.close(), 1000);
-      });
-    } else {
-      console.log('Данные для отправки:', dataToSend);
-      showToast('В Telegram будет отправлено');
+    } catch (error) {
+      console.error('Ошибка скачивания:', error);
+      showToast('Ошибка при сохранении', 3000);
     }
-  } catch (error) {
-    console.error('Ошибка отправки:', error);
-    showToast('Ошибка при отправке', 3000);
-  } finally {
-    sendBtn.disabled = false;
-    sendBtn.textContent = 'Отправить';
-  }
-});
+  });
+  
+  // Функция отправки (исправленная)
+  document.getElementById('send-btn').addEventListener('click', async () => {
+    const sendBtn = document.getElementById('send-btn');
+    sendBtn.disabled = true;
+    
+    try {
+      // Создаем JPEG изображение
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      tempCtx.fillStyle = 'white';
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.drawImage(canvas, 0, 0);
+      
+      // Конвертируем в base64
+      const imageBase64 = await new Promise(resolve => {
+        tempCanvas.toBlob(blob => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        }, 'image/jpeg', 0.9);
+      });
+      
+      // Отправка через Telegram WebApp
+      if (window.Telegram?.WebApp) {
+        Telegram.WebApp.sendData(JSON.stringify({ image: imageBase64 }));
+        
+        Telegram.WebApp.onEvent('webAppDataSendCompleted', () => {
+          showToast('Успешно отправлено!');
+          setTimeout(() => Telegram.WebApp.close(), 1000);
+        });
+        
+        Telegram.WebApp.onEvent('webAppDataSendFailed', () => {
+          showToast('Ошибка отправки', 3000);
+          sendBtn.disabled = false;
+        });
+      } else {
+        // Для отладки в браузере
+        console.log('Имитация отправки:', { image: imageBase64 });
+        showToast('В Telegram будет отправлено');
+        sendBtn.disabled = false;
+      }
+    } catch (error) {
+      console.error('Ошибка:', error);
+      showToast('Ошибка при отправке', 3000);
+      sendBtn.disabled = false;
+    }
+  });
 
 // Инициализация
 initCanvas();

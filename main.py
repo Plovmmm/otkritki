@@ -23,24 +23,29 @@ BOT_TOKEN = "8185739343:AAH1jagUB9l0gnNW9Klyg4nRgsKZHHNCI8c"
 
 async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        user = update.effective_user
+        # Получаем данные
         data = json.loads(update.message.web_app_data.data)
+        image_data = data.get('image')
         
-        # Декодируем изображение
-        image_bytes = base64.b64decode(data['image'])
+        if not image_data:
+            await update.message.reply_text("❌ Не получено изображение")
+            return
+
+        # Декодируем изображение (уже в формате data:image/jpeg;base64,...)
+        image_bytes = base64.b64decode(image_data.split(',')[1])
         img_file = BytesIO(image_bytes)
         img_file.name = f"graffiti_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
         
         # Отправляем обратно в чат
         await update.message.reply_photo(
             photo=img_file,
-            caption="🎨 Ваше граффити сохранено!",
+            caption="🎨 Ваше граффити:",
             parse_mode='Markdown'
         )
         
     except Exception as e:
         logger.error(f"Ошибка: {str(e)}")
-        await update.message.reply_text("⚠️ Ошибка при обработке граффити")
+        await update.message.reply_text("⚠️ Ошибка при обработке")
 
 def main():
     application = Application.builder().token(BOT_TOKEN).build()
