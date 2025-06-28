@@ -4,7 +4,6 @@
   "private": true,
   "homepage": "https://plovmmm.github.io/otkritki",
   "dependencies": {
-    "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
@@ -14,13 +13,12 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "homepage": "https://plovmmm.github.io/otkritki",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "eslintConfig": {
     "extends": [
