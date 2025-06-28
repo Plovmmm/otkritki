@@ -107,14 +107,15 @@ document.getElementById('download-btn').addEventListener('click', async () => {
       
       // Конвертируем в Blob
       tempCanvas.toBlob(async (blob) => {
-        if ('share' in navigator && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-          // Для iOS используем Web Share API
-          const file = new File([blob], "граффити.jpg", { type: "image/jpeg" });
-          await navigator.share({
-            files: [file],
-            title: "Мое граффити"
-          });
-        } else {
+        // Альтернативный вариант для iOS
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        const link = document.createElement('a');
+        link.href = imageBase64; // data:image/jpeg;base64,...
+        link.download = 'граффити.jpg';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+  } else {
           // Стандартное скачивание для других устройств
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
