@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import './App.css';
+import './gh-pages-override.css'; // Создайте этот файл
 
 export default function App() {
   const canvasRef = useRef(null);
@@ -8,11 +9,40 @@ export default function App() {
   const [color, setColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(5);
 
+  // Удаление элементов GitHub Pages
+  useEffect(() => {
+    const removeGitHubElements = () => {
+      const selectors = [
+        '.footer', 
+        '.ribbon',
+        '.btn', 
+        '.Header', 
+        '.pagehead',
+        '.octotree-show'
+      ];
+      
+      selectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => el.remove());
+      });
+      
+      document.body.style.padding = '0';
+      document.body.style.margin = '0';
+      document.documentElement.style.overflow = 'hidden';
+    };
+
+    removeGitHubElements();
+    const timer = setTimeout(removeGitHubElements, 1500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   // Инициализация Telegram WebApp
   useEffect(() => {
     if (window.Telegram?.WebApp) {
       window.Telegram.WebApp.ready();
       window.Telegram.WebApp.expand();
+      window.Telegram.WebApp.setHeaderColor('#ffffff');
+      window.Telegram.WebApp.setBackgroundColor('#ffffff');
     }
   }, []);
 
@@ -57,7 +87,6 @@ export default function App() {
     ctxRef.current.lineJoin = 'round';
   }, [color, brushSize]);
 
-  // Применяем новые параметры при их изменении
   useEffect(() => {
     updateDrawingParams();
   }, [color, brushSize, updateDrawingParams]);
@@ -105,39 +134,18 @@ export default function App() {
     if (!canvas) return;
 
     canvas.toBlob((blob) => {
-      if (blob) {
-        if (window.Telegram?.WebApp) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            window.Telegram.WebApp.sendData(reader.result);
-          };
-          reader.readAsDataURL(blob);
-        } else {
-          console.log('Canvas image:', URL.createObjectURL(blob));
-        }
+      if (window.Telegram?.WebApp) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          window.Telegram.WebApp.sendData(JSON.stringify({
+            image: reader.result,
+            userId: window.Telegram.WebApp.initDataUnsafe.user?.id
+          }));
+        };
+        reader.readAsDataURL(blob);
       }
-    }, 'image/png', 0.9);
+    }, 'image/png');
   };
-
-  
-  const sendToTelegram = () => {
-  const canvas = canvasRef.current;
-  if (!canvas) return;
-
-  canvas.toBlob((blob) => {
-    if (window.Telegram?.WebApp) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        // Отправляем данные боту
-        window.Telegram.WebApp.sendData(JSON.stringify({
-          image: reader.result,
-          userId: window.Telegram.WebApp.initDataUnsafe.user?.id
-        }));
-      };
-      reader.readAsDataURL(blob);
-    }
-  }, 'image/png');
-};
 
   return (
     <div className="app">

@@ -1,0 +1,23 @@
+/* Скрываем все элементы GitHub Pages */
+.footer, .ribbon, .btn, .Header, .pagehead, .octotree-show {
+    display: none !important;
+  }
+  
+  /* Убираем отступы и скроллы */
+  body, html {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    height: 100% !important;
+  }
+  
+  /* Настройки для полноэкранного приложения */
+  #root {
+    height: 100vh;
+    width: 100vw;
+  }
+  
+  .app {
+    height: 100%;
+    width: 100%;
+  }

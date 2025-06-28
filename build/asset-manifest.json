@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/otkritki/static/css/main.5433f679.css",
+    "main.js": "/otkritki/static/js/main.05e99a76.js",
+    "index.html": "/otkritki/index.html",
+    "main.5433f679.css.map": "/otkritki/static/css/main.5433f679.css.map",
+    "main.05e99a76.js.map": "/otkritki/static/js/main.05e99a76.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.5433f679.css",
+    "static/js/main.05e99a76.js"
+  ]
+}
