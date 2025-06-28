@@ -6,6 +6,7 @@ from telegram.ext import (
     filters,
     ContextTypes
 )
+import json
 import base64
 from io import BytesIO
 import logging
@@ -22,12 +23,13 @@ ADMIN_CHAT_ID = 1323961884  # Ваш chat_id
 
 async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        logger.info(f"Получены данные от: {update.effective_user.id}")
+        user = update.effective_user
+        logger.info(f"Получены данные от: {user.id} ({user.username or 'без username'})")
         
         # Парсим данные из WebApp
         data = json.loads(update.message.web_app_data.data)
         image_base64 = data.get('image')
-        user_id = data.get('userId', 'anonymous')
+        sender_id = data.get('userId', str(user.id))
         
         if not image_base64:
             await update.message.reply_text("❌ Не получены данные изображения")
@@ -37,33 +39,54 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
             # Декодируем изображение
             image_bytes = base64.b64decode(image_base64)
             img_file = BytesIO(image_bytes)
-            img_file.name = f"graffiti_{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            img_file.name = f"graffiti_{sender_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            
+            # Сохраняем временную копию для дебага
+            if os.getenv('DEBUG_MODE'):
+                with open(img_file.name, 'wb') as f:
+                    f.write(image_bytes)
         except Exception as e:
             logger.error(f"Ошибка декодирования: {str(e)}")
             await update.message.reply_text("❌ Ошибка обработки изображения")
             return
             
-        # Отправляем администратору
+        # Отправляем изображение
         try:
+            caption = (
+                f"🖌 Новое граффити\n"
+                f"👤 От: {user.mention_markdown() if user else sender_id}\n"
+                f"📅 {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
+                f"#граффити"
+            )
+            
+            # Отправка администратору (даже если это отправитель)
             await context.bot.send_photo(
                 chat_id=ADMIN_CHAT_ID,
                 photo=img_file,
-                caption=(
-                    f"🖌 Новое граффити\n"
-                    f"👤 ID: {user_id}\n"
-                    f"📅 {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
-                    f"#граффити"
-                ),
+                caption=caption,
                 parse_mode='Markdown'
             )
-            logger.info(f"Изображение отправлено администратору {ADMIN_CHAT_ID}")
-            await update.message.reply_text("✅ Ваше граффити успешно отправлено!")
+            
+            # Если отправитель не администратор - отправляем ему подтверждение
+            if str(user.id) != str(ADMIN_CHAT_ID):
+                await update.message.reply_text(
+                    "✅ Ваше граффити успешно отправлено администратору!",
+                    parse_mode='Markdown'
+                )
+            else:
+                await update.message.reply_text(
+                    "✅ Вы отправили граффити себе (как администратору)",
+                    parse_mode='Markdown'
+                )
+                
+            logger.info(f"Изображение отправлено в чат {ADMIN_CHAT_ID}")
+            
         except Exception as e:
-            logger.error(f"Ошибка отправки админу: {str(e)}")
+            logger.error(f"Ошибка отправки: {str(e)}")
             await update.message.reply_text("❌ Ошибка при отправке. Попробуйте позже.")
             
     except Exception as e:
-        logger.error(f"Общая ошибка: {str(e)}")
+        logger.error(f"Общая ошибка: {str(e)}", exc_info=True)
         await update.message.reply_text("⚠️ Произошла непредвиденная ошибка")
 
 def main():
