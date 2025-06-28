@@ -1,6 +1,7 @@
 import os
+import json
 import logging
-from telegram import Update
+from telegram import Update, Bot
 from telegram.ext import (
     Application,
     MessageHandler,
@@ -18,58 +19,45 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-ADMIN_CHAT_ID = 1323961884  # Ваш ID
+BOT_TOKEN = "8185739343:AAH1jagUB9l0gnNW9Klyg4nRgsKZHHNCI8c"
 
 async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка данных из WebApp"""
     try:
-        # Получаем данные от пользователя
         user = update.effective_user
-        data = update.message.web_app_data.data
-        json_data = json.loads(data)
+        logger.info(f"Получено граффити от: {user.id if user else 'аноним'}")
+
+        # Парсим данные
+        data = json.loads(update.message.web_app_data.data)
+        image_base64 = data.get('image')
         
-        logger.info(f"Получены данные от: {user.id if user else 'anonymous'}")
-        
-        # Проверяем наличие изображения
-        if not json_data.get('image'):
-            await update.message.reply_text("❌ Не получены данные изображения")
+        if not image_base64:
+            await update.message.reply_text("❌ Не получилось загрузить изображение")
             return
-            
+
+        # Декодируем изображение
         try:
-            # Декодируем изображение
-            image_bytes = base64.b64decode(json_data['image'])
+            image_bytes = base64.b64decode(image_base64)
             img_file = BytesIO(image_bytes)
-            img_file.name = f"graffiti_{json_data.get('userId', 'unknown')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-            
-            # Формируем подпись
-            caption = (
-                f"🖌 Новое граффити\n"
-                f"👤 От: @{json_data.get('username', 'unknown')} (ID: {json_data.get('userId', 'unknown')})\n"
-                f"📅 {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
-            )
-            
-            if json_data.get('isAdmin'):
-                caption += "⚠️ Отправлено администратором себе\n"
-            
-            # Отправляем администратору
-            await context.bot.send_photo(
-                chat_id=ADMIN_CHAT_ID,
+            img_file.name = f"graffiti_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+        except Exception as e:
+            logger.error(f"Ошибка декодирования: {str(e)}")
+            await update.message.reply_text("❌ Ошибка обработки изображения")
+            return
+
+        # Отправляем обратно в тот же чат
+        try:
+            await update.message.reply_photo(
                 photo=img_file,
-                caption=caption,
+                caption="🎨 Ваше граффити:",
                 parse_mode='Markdown'
             )
-            
-            # Отправляем подтверждение пользователю
-            if str(user.id) != str(ADMIN_CHAT_ID):
-                await update.message.reply_text("✅ Ваше граффити отправлено администратору!")
-            else:
-                await update.message.reply_text("✅ Вы отправили граффити себе (как администратору)")
-                
-            logger.info(f"Изображение отправлено в чат {ADMIN_CHAT_ID}")
+            logger.info(f"Граффити отправлено в чат {update.message.chat.id}")
             
         except Exception as e:
-            logger.error(f"Ошибка обработки изображения: {str(e)}")
-            await update.message.reply_text("❌ Ошибка при обработке изображения")
-            
+            logger.error(f"Ошибка отправки: {str(e)}")
+            await update.message.reply_text("❌ Не удалось отправить граффити")
+
     except Exception as e:
         logger.error(f"Общая ошибка: {str(e)}")
         await update.message.reply_text("⚠️ Произошла непредвиденная ошибка")
@@ -77,7 +65,7 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
 def main():
     # Инициализация бота
     application = Application.builder() \
-        .token("8185739343:AAH1jagUB9l0gnNW9Klyg4nRgsKZHHNCI8c") \
+        .token(BOT_TOKEN) \
         .build()
     
     # Обработчик данных из WebApp
