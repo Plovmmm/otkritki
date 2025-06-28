@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <title>Telegram Paint App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overscroll-behavior: none;
+      touch-action: none;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f5f5f5;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    #app {
+      max-width: 100vw;
+      min-height: 100vh;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+      text-align: center;
+      font-size: 1.5rem;
+    }
+    
+    .canvas {
+      width: 100%;
+      height: 60vh;
+      max-height: 500px;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      touch-action: none;
+      display: block;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .controls {
+      width: 100%;
+      max-width: 500px;
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .color-picker {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .color-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+    
+    .size-picker, .actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      min-width: 80px;
+    }
+    
+    .actions button {
+      background-color: #007bff;
+      color: white;
+    }
+    
+    .actions button:hover {
+      background-color: #0056b3;
+    }
+    
+    .size-picker button {
+      background-color: #f0f0f0;
+      color: #333;
+    }
+    
+    .size-picker button:hover {
+      background-color: #e0e0e0;
+    }
+    
+    @media (max-width: 480px) {
+      #app {
+        padding: 10px;
+      }
+      
+      h1 {
+        font-size: 1.3rem;
+        margin-bottom: 15px;
+      }
+      
+      .canvas {
+        height: 50vh;
+      }
+      
+      button {
+        padding: 6px 12px;
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>Открытка насте высылатель</h1>
+    
+    <canvas id="canvas" class="canvas"></canvas>
+    
+    <div class="controls">
+      <div class="color-picker">
+        <button class="color-btn" style="background-color: #000000" data-color="#000000"></button>
+        <button class="color-btn" style="background-color: #ff0000" data-color="#ff0000"></button>
+        <button class="color-btn" style="background-color: #00ff00" data-color="#00ff00"></button>
+        <button class="color-btn" style="background-color: #0000ff" data-color="#0000ff"></button>
+        <button class="color-btn" style="background-color: #ffff00" data-color="#ffff00"></button>
+        <button class="color-btn" style="background-color: #ffffff" data-color="#ffffff"></button>
+      </div>
+      
+      <div class="size-picker">
+        <button data-size="5">5рх ура!</button>
+        <button data-size="10">10рх ура!</button>
+        <button data-size="30">30рх ура!</button>
+      </div>
+      
+      <div class="actions">
+        <button id="clear-btn">Очистить</button>
+        <button id="send-btn">Отправить</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Удаляем элементы GitHub при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+      ['.footer', '.ribbon', '.btn', '.Header', '.pagehead', '.octotree-show'].forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => el.remove());
+      });
+      
+      document.body.style.padding = '0';
+      document.body.style.margin = '0';
+      document.documentElement.style.overflow = 'hidden';
+    });
+
+    // Основной код приложения
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let currentColor = '#000000';
+    let currentSize = 5;
+
+    // Инициализация Telegram WebApp
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+      window.Telegram.WebApp.setHeaderColor('#ffffff');
+      window.Telegram.WebApp.setBackgroundColor('#ffffff');
+    }
+
+    // Инициализация Canvas
+    function initCanvas() {
+      const devicePixelRatio = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      
+      canvas.width = rect.width * devicePixelRatio;
+      canvas.height = rect.height * devicePixelRatio;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      
+      ctx.scale(devicePixelRatio, devicePixelRatio);
+      updateDrawingParams();
+    }
+
+    function updateDrawingParams() {
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = currentSize;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    }
+
+    // Обработчики рисования
+    function startDrawing(e) {
+      isDrawing = true;
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX || e.touches[0].clientX) - rect.left;
+      const y = (e.clientY || e.touches[0].clientY) - rect.top;
+      
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX || e.touches[0].clientX) - rect.left;
+      const y = (e.clientY || e.touches[0].clientY) - rect.top;
+      
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+
+    function stopDrawing() {
+      isDrawing = false;
+      ctx.closePath();
+    }
+
+    // Инициализация
+    initCanvas();
+    window.addEventListener('resize', initCanvas);
+
+    // Назначение событий
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseleave', stopDrawing);
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      startDrawing(e.touches[0]);
+    });
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      draw(e.touches[0]);
+    });
+    canvas.addEventListener('touchend', stopDrawing);
+
+    // Обработчики кнопок
+    document.querySelectorAll('.color-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentColor = btn.dataset.color;
+        updateDrawingParams();
+      });
+    });
+
+    document.querySelectorAll('.size-picker button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentSize = parseInt(btn.dataset.size);
+        updateDrawingParams();
+      });
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    document.getElementById('send-btn').addEventListener('click', () => {
+      canvas.toBlob((blob) => {
+        if (window.Telegram?.WebApp) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            window.Telegram.WebApp.sendData(JSON.stringify({
+              image: reader.result,
+              userId: window.Telegram.WebApp.initDataUnsafe.user?.id
+            }));
+          };
+          reader.readAsDataURL(blob);
+        } else {
+          alert('Функция отправки доступна только в Telegram');
+        }
+      }, 'image/png');
+    });
+  </script>
+</body>
+</html>
